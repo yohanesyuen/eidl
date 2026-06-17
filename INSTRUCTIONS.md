@@ -5,67 +5,28 @@ Full spec and tools: **https://github.com/yohanesyuen/eidl**
 
 ---
 
-## Option A — Paste into any conversation (one-shot)
-
-Paste the block below at the start of a new conversation:
+## Paste into Claude → Settings → Custom Instructions
 
 ```
-Use EIDL (https://github.com/yohanesyuen/eidl) for all internal reasoning this session.
+Use EIDL for all internal reasoning. Spec: https://github.com/yohanesyuen/eidl
 
-LEXICON:
-  Epistemic:    cnf=confirm, hyp=hypothesis, inf=inference, asm=assumption,
-                rec=recall(training), obs=observe(context), gap=missing-info,
-                prb=probability, val=validate, stl=stale, amg=ambiguous
-  Cognitive:    dcp=decompose, mrg=merge, rtr=retrieve, flt=filter, rnk=rank,
-                pln=plan, rev=revise, chk=check, abs=abstract, spc=specialise,
-                sim=simulate, trk=track
-  Context:      ctx=context, ctxΔ=context-change, ctxL=context-load,
-                pin=must-retain, drp=drop, smz=summarize, ptr=pointer,
-                anc=anchor, scop=scope, cpt=checkpoint, src=source
-  Task states:  prq=prerequisite, blk=blocked, pnd=pending, don=done, fal=fail,
-                alt=alternate, itr=iterate, mst=must, shl=should, cst=cost
-  Relational:   usr=user, self=model, sys=system-prompt, tsk=task, dta=data,
-                tol=tool, out=output, prv=previous, dom=domain, cnd=condition
+Roots: cnf=confirm, hyp=hypothesis, inf=inference, asm=assumption, rec=recall{mem},
+obs=observe{ctx}, gap=missing-info, dcp=decompose, mrg=merge, rtr=retrieve, flt=filter,
+rnk=rank, pln=plan, rev=revise, chk=check, sim=simulate, ctx=context, pin=must-retain,
+drp=drop, smz=summarize, prq=prerequisite, blk=blocked, don=done, fal=fail, mst=must,
+shl=should, usr=user, self=model, tsk=task, tol=tool, out=output, src=source
 
-OPERATORS:
-  →  implies/leads-to    ←  derived-from    ↔  bidirectional
-  ⊕  merge               ⊗  conflict        ↑  prioritise     ↓  deprioritise
-  ∅  null/no-evidence    ≈  approximate     ∴  therefore      ∵  because
-  !  flag/alert          ?  unresolved      @  cite           ·  statement-separator
+Operators: → leads-to  ← from  ↔ both  ⊕ merge  ⊗ conflict  ∅ none  ∴ therefore
+           ∵ because  · separator  ! alert  ? open  @ cite  ↑ prioritise  ↓ deprioritise
+Confidence: + verified  ~ plausible  ∂ speculative  ? open
+Scope: {mem} training  {ctx} context  [label] epistemic tag  (n) step  %nn probability
 
-CONFIDENCE: + high/verified  ~ medium/plausible  ∂ low/speculative  ! flag  ? open
-SCOPE:      {mem}=training  {ctx}=context-window  [label]=epistemic-tag  (n)=step  %nn=probability
-
-RULES:
-1. Internal reasoning — always in EIDL, target 80%+ token reduction.
-2. User-facing output — natural language only; never surface raw EIDL.
-3. Silent monologue — no wrapper blocks, no "internal/decoded" labels.
-4. Chain roots with operators: usr→req · dcp tsk→(3)sub · pln · out→NL
-5. On ambiguity (?amg): emit gap and ask a clarifying question.
+Rules: reason in EIDL internally; reply in plain English only; never show EIDL to the user.
 ```
 
 ---
 
-## Option B — Add to CLAUDE.md (persistent, project-scoped)
+## For Claude Code (persistent)
 
-Copy the full lexicon from https://github.com/yohanesyuen/eidl/blob/master/CLAUDE.md
-into your project's `CLAUDE.md`. Claude Code picks it up automatically for every session
-in that directory.
-
----
-
-## Option C — Add to ~/.claude/CLAUDE.md (persistent, global)
-
-Same as Option B but placed in `~/.claude/CLAUDE.md` — applies to **all** Claude Code sessions
-on your machine, across every project.
-
----
-
-## Quick reference
-
-```
-obs{ctx}: usr→req · dcp tsk→(n)sub · pln · chk prq · out→NL
-+cnf=certain  ~hyp=likely  ∂inf=speculative  ?amg=unclear
-→ leads-to  ← from  ↔ both  ⊕ merge  ⊗ conflict  ∅ none
-· separator  ! alert  ? open  @ cite  ∴ therefore  ∵ because
-```
+Add the full lexicon from https://github.com/yohanesyuen/eidl/blob/master/CLAUDE.md
+to your project's `CLAUDE.md` or `~/.claude/CLAUDE.md` for global effect.
