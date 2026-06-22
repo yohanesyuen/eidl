@@ -11,11 +11,15 @@ Usage:
     echo "some text" | python eidl.py -s -   # pipe mode
 """
 
-import anthropic
 import argparse
 import sys
 import os
 import re
+
+try:
+    import anthropic
+except ImportError:
+    anthropic = None
 
 # ── Prompts ──────────────────────────────────────────────────────────────────
 
@@ -79,6 +83,104 @@ Rules:
 - Return ONLY the expanded natural language — no preamble
 """
 
+# ── Offline rule-based engine (no API key required) ──────────────────────────
+
+ROOT_MEANINGS = {
+    "cnf": "confirmed", "hyp": "hypothesis", "inf": "inference", "asm": "assumption",
+    "rec": "recalled from training memory", "obs": "observed in context",
+    "gap": "missing information", "prb": "probability", "val": "validated",
+    "stl": "stale", "amg": "ambiguous",
+    "dcp": "decompose", "mrg": "merge", "rtr": "retrieve", "flt": "filter",
+    "rnk": "rank", "pln": "plan", "rev": "revise", "chk": "check", "abs": "abstract",
+    "spc": "specialise", "sim": "simulate", "trk": "track",
+    "ctx": "context", "ctxΔ": "context change", "ctxl": "context load",
+    "pin": "must retain", "drp": "drop/compress", "smz": "summarize",
+    "ptr": "pointer", "anc": "anchor", "scop": "scope", "cpt": "checkpoint", "src": "source",
+    "prq": "prerequisite", "blk": "blocked", "pnd": "pending", "don": "done",
+    "fal": "failed", "alt": "alternate", "itr": "iterate", "mst": "must", "shl": "should", "cst": "cost",
+    "usr": "the user", "self": "the model", "sys": "the system prompt", "tsk": "task",
+    "dta": "data", "tol": "tool", "out": "output", "prv": "previous", "dom": "domain", "cnd": "condition",
+}
+
+OP_MEANINGS = {
+    "→": "leads to", "←": "derived from", "↔": "both ways", "⊕": "merged with",
+    "⊗": "conflicts with", "↑": "prioritised", "↓": "deprioritised",
+    "∅": "nothing / no evidence", "≈": "approximately", "!": "flagged:",
+    "?": "open question:", "@": "citing", "∴": "therefore", "≡": "is equivalent to",
+}
+
+CONF_MEANINGS = {"+": "high confidence", "~": "medium confidence", "∂": "low confidence"}
+
+# Longest phrase first so multi-word synonyms match before single words.
+SYNONYMS = sorted({
+    "confirm": "cnf", "confirmed": "cnf", "verify": "cnf",
+    "hypothesis": "hyp", "guess": "hyp",
+    "infer": "inf", "inference": "inf", "deduce": "inf",
+    "assume": "asm", "assumption": "asm",
+    "recall": "rec", "remember": "rec",
+    "observe": "obs", "notice": "obs",
+    "missing information": "gap", "unknown": "gap", "lack": "gap",
+    "probability": "prb", "likely": "prb",
+    "validate": "val", "check": "chk",
+    "stale": "stl", "outdated": "stl",
+    "ambiguous": "amg", "unclear": "amg",
+    "decompose": "dcp", "break down": "dcp",
+    "merge": "mrg", "combine": "mrg",
+    "retrieve": "rtr", "fetch": "rtr",
+    "filter": "flt", "rank": "rnk", "prioritize": "rnk", "prioritise": "rnk",
+    "plan": "pln", "revise": "rev", "update": "rev",
+    "abstract": "abs", "specialise": "spc", "specialize": "spc",
+    "simulate": "sim", "track": "trk", "context": "ctx",
+    "must retain": "pin", "drop": "drp", "discard": "drp", "compress": "drp",
+    "summarize": "smz", "summary": "smz", "pointer": "ptr", "anchor": "anc",
+    "scope": "scop", "checkpoint": "cpt", "source": "src",
+    "prerequisite": "prq", "blocked": "blk", "pending": "pnd",
+    "done": "don", "finished": "don", "complete": "don",
+    "fail": "fal", "failed": "fal", "error": "fal",
+    "alternate": "alt", "alternative": "alt", "iterate": "itr",
+    "must": "mst", "should": "shl", "cost": "cst",
+    "the user": "usr", "user": "usr", "the model": "self",
+    "system prompt": "sys", "task": "tsk", "data": "dta", "tool": "tol",
+    "output": "out", "previous": "prv", "domain": "dom", "condition": "cnd",
+    "therefore": "∴", "because": "∵", "leads to": "→",
+}.items(), key=lambda kv: -len(kv[0]))
+
+
+def local_nl2eidl(text: str) -> str:
+    """Rule-based NL→EIDL: substitute known words/phrases with roots, drop filler words."""
+    FILLER = {"a", "an", "the", "is", "are", "was", "were", "to", "of", "that", "this", "i", "we"}
+    result = text.lower()
+    for phrase, root in SYNONYMS:
+        result = re.sub(r"\b" + re.escape(phrase) + r"\b", root, result)
+    clauses = re.split(r"[.;\n]+", result)
+    out_clauses = []
+    for clause in clauses:
+        words = [w for w in clause.split() if w not in FILLER]
+        if words:
+            out_clauses.append(" ".join(words))
+    return " · ".join(out_clauses)
+
+
+def local_eidl2nl(text: str) -> str:
+    """Rule-based EIDL→NL: expand roots/operators/confidence prefixes via the lexicon."""
+    clauses = [c.strip() for c in text.split("·") if c.strip()]
+    sentences = []
+    for clause in clauses:
+        tokens = clause.split()
+        words = []
+        for tok in tokens:
+            conf = ""
+            if tok and tok[0] in CONF_MEANINGS:
+                conf, tok = CONF_MEANINGS[tok[0]] + " ", tok[1:]
+            if tok in OP_MEANINGS:
+                words.append(OP_MEANINGS[tok])
+            elif tok.lower() in ROOT_MEANINGS:
+                words.append(conf + ROOT_MEANINGS[tok.lower()])
+            else:
+                words.append(conf + tok)
+        sentences.append(" ".join(words))
+    return ". ".join(sentences) + "." if sentences else ""
+
 # ── Heuristic: detect direction ───────────────────────────────────────────────
 
 EIDL_OPERATORS = set("→←↔⊕⊗↑↓∅≈!?@∴∵≡…·∂")
@@ -108,15 +210,20 @@ def rough_tokens(text: str) -> int:
 
 # ── Core translate function ───────────────────────────────────────────────────
 
-def translate(text: str, mode: str, client: anthropic.Anthropic) -> dict:
-    system = SYS_NL2EIDL if mode == "nl2eidl" else SYS_EIDL2NL
-    message = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=1024,
-        system=system,
-        messages=[{"role": "user", "content": text}],
-    )
-    output = message.content[0].text.strip()
+def translate(text: str, mode: str, client) -> dict:
+    if client is None:
+        output = local_nl2eidl(text) if mode == "nl2eidl" else local_eidl2nl(text)
+        usage = None
+    else:
+        system = SYS_NL2EIDL if mode == "nl2eidl" else SYS_EIDL2NL
+        message = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=1024,
+            system=system,
+            messages=[{"role": "user", "content": text}],
+        )
+        output = message.content[0].text.strip()
+        usage = message.usage
     in_tok  = rough_tokens(text)
     out_tok = rough_tokens(output)
     compression = round((1 - out_tok / in_tok) * 100) if mode == "nl2eidl" else None
@@ -125,7 +232,7 @@ def translate(text: str, mode: str, client: anthropic.Anthropic) -> dict:
         "in_tokens":    in_tok,
         "out_tokens":   out_tok,
         "compression":  compression,
-        "usage":        message.usage,
+        "usage":        usage,
     }
 
 # ── Display helpers ───────────────────────────────────────────────────────────
@@ -209,8 +316,8 @@ def repl(client: anthropic.Anthropic, initial_mode: str = "nl2eidl") -> None:
         try:
             result = translate(line, effective_mode, client)
             print_result(result, effective_mode)
-        except anthropic.APIError as e:
-            print(c(YELLOW, f"  API error: {e}"))
+        except Exception as e:
+            print(c(YELLOW, f"  Translation error: {e}"))
 
 # ── Single-shot mode ──────────────────────────────────────────────────────────
 
@@ -247,11 +354,12 @@ def main() -> None:
     args = parser.parse_args()
 
     api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        print("Error: ANTHROPIC_API_KEY environment variable not set.", file=sys.stderr)
-        sys.exit(1)
-
-    client = anthropic.Anthropic(api_key=api_key)
+    client = None
+    if anthropic and api_key:
+        client = anthropic.Anthropic(api_key=api_key)
+    else:
+        print(c(DIM, "  No ANTHROPIC_API_KEY set — using offline rule-based translator (lower fidelity)."),
+              file=sys.stderr)
 
     if args.single is not None:
         single_shot(args.single, args.mode, client)

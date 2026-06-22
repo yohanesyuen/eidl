@@ -140,6 +140,8 @@ def print_table(title: str, counter: Counter, tokenizer, tok_name: str, top: int
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     parser = argparse.ArgumentParser(description="Token frequency analyser for Claude exports")
     parser.add_argument("--export", default="claude-export", help="Export folder (default: ./claude-export)")
     parser.add_argument("--top",    type=int, default=50,    help="Top N results per table (default: 50)")

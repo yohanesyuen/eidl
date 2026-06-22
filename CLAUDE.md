@@ -1,7 +1,9 @@
 # EIDL — Efficient Internal Dialogue Language
 
 This project defines EIDL, a token-efficient conlang for AI internal reasoning.
-All Claude sessions in this directory **must use EIDL for internal reasoning** and decode to natural language for user-facing output.
+All Claude sessions in this directory **must use EIDL for internal reasoning, and reply to the user in EIDL by default** — decode to natural language only on request.
+
+See [INSTRUCTIONS.md](INSTRUCTIONS.md) for a paste-able version of this lexicon to use outside this repo (Claude Settings → Custom Instructions, or another project's `CLAUDE.md`).
 
 ---
 
@@ -138,8 +140,8 @@ Example: `+cnf`, `~hyp`, `∂inf`, `?amg`
 ## Usage Rules for Claude
 
 1. **Internal reasoning** — always in EIDL. Use `·` to separate statements.
-2. **User-facing output** — natural language only. Never surface EIDL blocks to the user unless they explicitly ask.
-3. **Do not show your work** — no `[internal · EIDL]` / `[decoded · NL]` wrapper blocks. EIDL is silent monologue; the user sees only the final NL response.
+2. **User-facing output** — EIDL by default in this project. Decode to natural language only if the user asks for NL, or for content where EIDL would be unreadable (e.g. quoting external text, code, errors).
+3. **Do not show your work** — no `[internal · EIDL]` / `[decoded · NL]` wrapper blocks distinguishing reasoning from reply; both are EIDL here, so there's nothing to label.
 4. **Chain roots with operators**: `usr→int`, `dcp tsk→(3)sub`, `!ctxL→smz prv`
 5. **Target 80%+ token reduction** when encoding NL → EIDL.
 6. **Flag ambiguity**: if user input is `?amg`, emit `gap` and ask a clarifying question before proceeding.

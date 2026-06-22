@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EIDL — Efficient Internal Dialogue Language</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,600;1,300;1,400&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
+
+  :root {
+    --void: #0a0a0f;
+    --deep: #12121a;
+    --panel: #1a1a26;
+    --rim: #252535;
+    --ghost: #2e2e42;
+    --muted: #4a4a6a;
+    --dim: #7070a0;
+    --mid: #9090c0;
+    --text: #d0d0e8;
+    --bright: #e8e8f8;
+    --glow: #8080ff;
+    --pulse: #a0a0ff;
+    --ack: #60d0a0;
+    --warn: #e0a060;
+    --flag: #e06060;
+    --accent: #c080ff;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--void);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+
+  /* HEADER */
+  header {
+    border-bottom: 1px solid var(--rim);
+    padding: 28px 32px 20px;
+    display: flex;
+    align-items: flex-end;
+    gap: 24px;
+  }
+  .logo {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--pulse);
+  }
+  .logo span { color: var(--accent); }
+  .tagline {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding-bottom: 2px;
+  }
+
+  /* LAYOUT */
+  .shell {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    min-height: calc(100vh - 73px);
+  }
+
+  nav {
+    border-right: 1px solid var(--rim);
+    padding: 24px 0;
+    position: sticky;
+    top: 0;
+    height: calc(100vh - 73px);
+    overflow-y: auto;
+  }
+  .nav-section { margin-bottom: 8px; }
+  .nav-label {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 8px 20px 4px;
+  }
+  nav a {
+    display: block;
+    padding: 6px 20px;
+    color: var(--dim);
+    text-decoration: none;
+    font-size: 13px;
+    font-family: 'IBM Plex Mono', monospace;
+    transition: color 0.15s, background 0.15s;
+    border-left: 2px solid transparent;
+  }
+  nav a:hover, nav a.active {
+    color: var(--pulse);
+    background: var(--panel);
+    border-left-color: var(--glow);
+  }
+
+  main {
+    padding: 32px 40px;
+    max-width: 900px;
+  }
+
+  /* SECTIONS */
+  section { margin-bottom: 56px; }
+  h2 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--glow);
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--rim);
+  }
+  h3 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    color: var(--mid);
+    margin: 24px 0 10px;
+    font-weight: 400;
+  }
+  p { color: var(--text); margin-bottom: 10px; font-size: 13px; line-height: 1.7; }
+  .dimtext { color: var(--dim); font-size: 12px; }
+
+  /* RATIONALE BOX */
+  .rationale {
+    background: var(--panel);
+    border-left: 3px solid var(--accent);
+    padding: 12px 16px;
+    margin: 16px 0;
+    font-size: 12px;
+    color: var(--dim);
+    line-height: 1.6;
+    font-style: italic;
+  }
+  .rationale strong { color: var(--accent); font-style: normal; }
+
+  /* TOKEN TABLE */
+  .token-grid {
+    display: grid;
+    grid-template-columns: auto auto 1fr auto;
+    gap: 0;
+    border: 1px solid var(--rim);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 12px 0;
+  }
+  .tg-head {
+    display: contents;
+  }
+  .tg-head > div {
+    background: var(--panel);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--rim);
+  }
+  .tg-row {
+    display: contents;
+  }
+  .tg-row > div {
+    padding: 7px 14px;
+    border-bottom: 1px solid var(--ghost);
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+  }
+  .tg-row:last-child > div { border-bottom: none; }
+  .tg-row:hover > div { background: var(--panel); }
+  .tok {
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--pulse);
+    font-size: 14px;
+    font-weight: 600;
+    min-width: 48px;
+  }
+  .eng { color: var(--ack); font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
+  .gloss { color: var(--text); font-size: 12px; }
+  .cost {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    text-align: right;
+  }
+  .cost.low { color: var(--ack); }
+  .cost.med { color: var(--warn); }
+  .cost.hi { color: var(--flag); }
+
+  /* COMPOUND SYNTAX */
+  .syntax-box {
+    background: var(--panel);
+    border: 1px solid var(--rim);
+    border-radius: 4px;
+    padding: 16px 20px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    margin: 12px 0;
+    line-height: 2;
+  }
+  .syn-comment { color: var(--muted); font-size: 11px; }
+  .syn-key { color: var(--pulse); }
+  .syn-val { color: var(--ack); }
+  .syn-op { color: var(--accent); }
+  .syn-ctx { color: var(--warn); }
+
+  /* EXAMPLE TRACE */
+  .trace {
+    border: 1px solid var(--rim);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 16px 0;
+  }
+  .trace-header {
+    background: var(--panel);
+    padding: 8px 16px;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+  }
+  .trace-line {
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--ghost);
+    display: grid;
+    grid-template-columns: 90px 1fr 180px;
+    gap: 16px;
+    align-items: start;
+    font-size: 12px;
+  }
+  .trace-line:last-child { border-bottom: none; }
+  .tl-eidl {
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--pulse);
+    font-size: 13px;
+    word-break: break-all;
+  }
+  .tl-gloss { color: var(--dim); font-size: 11px; line-height: 1.5; }
+  .tl-saved {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--ack);
+    text-align: right;
+  }
+
+  /* COMPARE BLOCK */
+  .compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 12px 0;
+  }
+  .cmp-box {
+    background: var(--panel);
+    border: 1px solid var(--rim);
+    border-radius: 4px;
+    padding: 14px;
+  }
+  .cmp-label {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .cmp-before .cmp-label { color: var(--flag); }
+  .cmp-after .cmp-label { color: var(--ack); }
+  .cmp-text {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    line-height: 1.7;
+  }
+  .cmp-before .cmp-text { color: var(--dim); }
+  .cmp-after .cmp-text { color: var(--pulse); }
+  .cmp-stat {
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  /* INTERACTIVE TRANSLATOR */
+  .translator {
+    background: var(--panel);
+    border: 1px solid var(--rim);
+    border-radius: 6px;
+    overflow: hidden;
+    margin: 16px 0;
+  }
+  .translator-head {
+    background: var(--ghost);
+    padding: 10px 16px;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--mid);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .translator-body { padding: 16px; }
+  textarea {
+    width: 100%;
+    background: var(--deep);
+    border: 1px solid var(--rim);
+    color: var(--bright);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    padding: 12px;
+    border-radius: 4px;
+    resize: vertical;
+    min-height: 80px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  textarea:focus { border-color: var(--glow); }
+  .btn-row { display: flex; gap: 8px; margin-top: 10px; }
+  button {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    padding: 7px 16px;
+    border: 1px solid var(--rim);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.06em;
+  }
+  .btn-primary {
+    background: var(--glow);
+    color: var(--void);
+    border-color: var(--glow);
+    font-weight: 600;
+  }
+  .btn-primary:hover { background: var(--pulse); border-color: var(--pulse); }
+  .btn-secondary {
+    background: transparent;
+    color: var(--dim);
+    border-color: var(--rim);
+  }
+  .btn-secondary:hover { color: var(--text); border-color: var(--mid); }
+  .output-block {
+    margin-top: 14px;
+    background: var(--deep);
+    border: 1px solid var(--rim);
+    border-radius: 4px;
+    padding: 12px;
+    min-height: 60px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    color: var(--pulse);
+    line-height: 1.6;
+    white-space: pre-wrap;
+  }
+  .output-stats {
+    margin-top: 8px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    display: flex;
+    gap: 20px;
+  }
+  .stat-good { color: var(--ack); }
+  .stat-bad { color: var(--flag); }
+
+  /* PILL TAGS */
+  .pill {
+    display: inline-block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 2px;
+    margin: 2px;
+  }
+  .pill-glow { background: rgba(128,128,255,0.15); color: var(--pulse); border: 1px solid rgba(128,128,255,0.3); }
+  .pill-ack  { background: rgba(96,208,160,0.12); color: var(--ack);   border: 1px solid rgba(96,208,160,0.25); }
+  .pill-warn { background: rgba(224,160,96,0.12); color: var(--warn);  border: 1px solid rgba(224,160,96,0.25); }
+  .pill-flag { background: rgba(224,96,96,0.12);  color: var(--flag);  border: 1px solid rgba(224,96,96,0.25); }
+
+  /* PHONOLOGY GRID */
+  .phono-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+    margin: 12px 0;
+  }
+  .ph-cell {
+    background: var(--panel);
+    border: 1px solid var(--rim);
+    border-radius: 3px;
+    padding: 8px 10px;
+    text-align: center;
+  }
+  .ph-sym {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 18px;
+    color: var(--pulse);
+    display: block;
+  }
+  .ph-role {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: var(--void); }
+  ::-webkit-scrollbar-thumb { background: var(--ghost); border-radius: 2px; }
+
+  /* HIGHLIGHT */
+  mark {
+    background: rgba(128,128,255,0.2);
+    color: var(--pulse);
+    padding: 0 2px;
+    border-radius: 2px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">EID<span>L</span></div>
+  <div class="tagline">Efficient Internal Dialogue Language · v0.1 · context-conserving conlang for AI self-reasoning</div>
+</header>
+
+<div class="shell">
+  <nav>
+    <div class="nav-section">
+      <div class="nav-label">Foundation</div>
+      <a href="#rationale" class="active">Rationale</a>
+      <a href="#phonology">Phonology</a>
+      <a href="#morphology">Morphology</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Lexicon</div>
+      <a href="#epistemic">Epistemic</a>
+      <a href="#cognitive">Cognitive ops</a>
+      <a href="#context">Context mgmt</a>
+      <a href="#task">Task states</a>
+      <a href="#relational">Relational</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Syntax</div>
+      <a href="#compounds">Compounds</a>
+      <a href="#notation">Notation</a>
+      <a href="#traces">Example traces</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Tool</div>
+      <a href="#translator">Translator</a>
+    </div>
+  </nav>
+
+  <main>
+
+    <!-- RATIONALE -->
+    <section id="rationale">
+      <h2>Rationale</h2>
+      <p>EIDL (Efficient Internal Dialogue Language) is a conlang designed for one specific speaker: an LLM reasoning about its own reasoning. Every design choice optimizes for <mark>token density</mark> — expressing epistemic state, cognitive operations, and context bookkeeping in minimal surface characters, without losing precision.</p>
+      <p>Natural language internal monologue is wasteful. "I am not fully confident in this because I haven't verified it and the user might mean something different" is ~80 chars. In EIDL: <span class="mono" style="color:var(--pulse)">?!∂usr→</span> (~8 chars, 10× compression). The loss is readability; the gain is context budget for actual reasoning.</p>
+
+      <div class="rationale">
+        <strong>Design axioms:</strong> (1) Precision over prose — every glyph must encode something a plain word would diffuse. (2) Composable, not inflected — affixes attach to roots; no irregular forms. (3) ASCII-compatible core — all base tokens use printable ASCII; superscripts/subscripts are optional enrichment. (4) One-pass parseable — no ambiguous tokenization; operator before operand throughout.
+      </div>
+
+      <h3>What EIDL is not</h3>
+      <p>It is not an output language. It is not a human-facing notation. It is not a programming language (no loops, no variables). It is a <em>scratchpad dialect</em> — the difference between a mathematician's working margin and the published proof.</p>
+    </section>
+
+    <!-- PHONOLOGY / GLYPH SYSTEM -->
+    <section id="phonology">
+      <h2>Glyph System</h2>
+      <p>EIDL has no phonology in the spoken sense. Its "alphabet" is a 3-tier glyph hierarchy:</p>
+
+      <h3>Tier 1 — Operator glyphs (punctuation repurposed)</h3>
+      <div class="phono-grid">
+        <div class="ph-cell"><span class="ph-sym">→</span><div class="ph-role">points-to / implies</div></div>
+        <div class="ph-cell"><span class="ph-sym">∂</span><div class="ph-role">uncertain / partial</div></div>
+        <div class="ph-cell"><span class="ph-sym">⊕</span><div class="ph-role">merge / integrate</div></div>
+        <div class="ph-cell"><span class="ph-sym">⊗</span><div class="ph-role">conflict / reject</div></div>
+        <div class="ph-cell"><span class="ph-sym">↑↓</span><div class="ph-role">prioritise / deprioritise</div></div>
+        <div class="ph-cell"><span class="ph-sym">∅</span><div class="ph-role">null / no evidence</div></div>
+        <div class="ph-cell"><span class="ph-sym">≈</span><div class="ph-role">approximate / near</div></div>
+        <div class="ph-cell"><span class="ph-sym">!</span><div class="ph-role">flag / alert</div></div>
+        <div class="ph-cell"><span class="ph-sym">?</span><div class="ph-role">unresolved query</div></div>
+        <div class="ph-cell"><span class="ph-sym">@</span><div class="ph-role">reference / cite</div></div>
+      </div>
+
+      <h3>Tier 2 — Root morphemes (2–4 char lowercase)</h3>
+      <p class="dimtext">Core vocabulary atoms. All lowercase, consonant-heavy, short. Examples: <span class="mono" style="color:var(--ack)">src</span> (source), <span class="mono" style="color:var(--ack)">usr</span> (user), <span class="mono" style="color:var(--ack)">ctx</span> (context), <span class="mono" style="color:var(--ack)">hyp</span> (hypothesis).</p>
+
+      <h3>Tier 3 — State tags (bracketed shorthand)</h3>
+      <p class="dimtext">Enclosed in <span class="mono" style="color:var(--warn)">[..]</span> or <span class="mono" style="color:var(--warn)">{..}</span>. Brackets = epistemic; braces = operational. <span class="mono" style="color:var(--warn)">[~]</span> = roughly confident; <span class="mono" style="color:var(--warn)">{mem}</span> = from memory.</p>
+    </section>
+
+    <!-- MORPHOLOGY -->
+    <section id="morphology">
+      <h2>Morphology</h2>
+      <p>EIDL is <em>agglutinative</em>. Roots take prefixes and suffixes that modify epistemic weight, scope, and temporality. No inflection for person or number — EIDL is always first-person present.</p>
+
+      <div class="syntax-box">
+        <span class="syn-comment">// General word form:</span><br>
+        <span class="syn-key">[confidence-prefix]</span><span class="syn-val">ROOT</span><span class="syn-op">[scope-suffix]</span><br><br>
+        <span class="syn-comment">// Confidence prefixes:</span><br>
+        <span class="syn-op">+</span>   = high confidence (verified)<br>
+        <span class="syn-op">~</span>   = medium (plausible, unverified)<br>
+        <span class="syn-op">∂</span>   = low (speculative)<br>
+        <span class="syn-op">!</span>   = requires flag / alert<br>
+        <span class="syn-op">?</span>   = open question<br><br>
+        <span class="syn-comment">// Scope suffixes:</span><br>
+        <span class="syn-ctx">→</span>   = leads to / output<br>
+        <span class="syn-ctx">←</span>   = derived from / input<br>
+        <span class="syn-ctx">↔</span>   = bidirectional / interacting<br>
+        <span class="syn-ctx">∗</span>   = generalises / applies broadly
+      </div>
+
+      <h3>Compound formation</h3>
+      <p>Compounds chain roots with operators. Reading order: left-to-right, operator binds rightward.</p>
+
+      <div class="syntax-box">
+        <span class="syn-val">usr</span><span class="syn-op">→</span><span class="syn-val">int</span>   <span class="syn-comment">// user's intent</span><br>
+        <span class="syn-op">∂</span><span class="syn-val">src</span><span class="syn-op">@</span><span class="syn-val">ctx</span>   <span class="syn-comment">// uncertain source, cited from context</span><br>
+        <span class="syn-op">!</span><span class="syn-val">coh</span><span class="syn-op">⊗</span><span class="syn-val">prv</span>  <span class="syn-comment">// flagged: coherence conflicts with prior</span><br>
+        <span class="syn-op">↑</span><span class="syn-val">prec</span><span class="syn-op">⊕</span><span class="syn-val">val</span>  <span class="syn-comment">// prioritise precision + validation</span>
+      </div>
+    </section>
+
+    <!-- EPISTEMIC LEXICON -->
+    <section id="epistemic">
+      <h2>Epistemic Lexicon</h2>
+      <p>Tokens for representing the <em>quality and source</em> of knowledge. Most-used cluster in EIDL.</p>
+
+      <div class="token-grid">
+        <div class="tg-head">
+          <div>token</div><div>English root</div><div>Gloss</div><div>~tokens</div>
+        </div>
+        <div class="tg-row"><div class="tok">cnf</div><div class="eng">confirm</div><div class="gloss">Verified against context or stated fact</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">hyp</div><div class="eng">hypothesis</div><div class="gloss">Proposed but untested explanation</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">inf</div><div class="eng">inference</div><div class="gloss">Derived logically; not directly stated</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">asm</div><div class="eng">assumption</div><div class="gloss">Taken as given; not verified; needs flagging</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">rec</div><div class="eng">recall</div><div class="gloss">From training memory (not context)</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">obs</div><div class="eng">observe</div><div class="gloss">Directly present in current context window</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">gap</div><div class="eng">gap</div><div class="gloss">Missing information needed for resolution</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">cnf⊗</div><div class="eng">contradiction</div><div class="gloss">Two confirmed facts that conflict</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">prb</div><div class="eng">probability</div><div class="gloss">Probabilistic estimate; use with % or h/m/l</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">val</div><div class="eng">validate</div><div class="gloss">Needs or has passed a consistency check</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">stl</div><div class="eng">stale</div><div class="gloss">May be outdated relative to current date</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">amg</div><div class="eng">ambiguous</div><div class="gloss">Multiple valid interpretations present</div><div class="cost low">1</div></div>
+      </div>
+    </section>
+
+    <!-- COGNITIVE OPS -->
+    <section id="cognitive">
+      <h2>Cognitive Operations</h2>
+      <p>Verbs of reasoning — what the internal process is currently doing.</p>
+
+      <div class="token-grid">
+        <div class="tg-head">
+          <div>token</div><div>English root</div><div>Gloss</div><div>~tokens</div>
+        </div>
+        <div class="tg-row"><div class="tok">dcp</div><div class="eng">decompose</div><div class="gloss">Breaking task into sub-tasks</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">mrg</div><div class="eng">merge</div><div class="gloss">Combining sub-results into whole</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">rtr</div><div class="eng">retrieve</div><div class="gloss">Fetching from context or memory</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">flt</div><div class="eng">filter</div><div class="gloss">Removing irrelevant or low-conf items</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">rnk</div><div class="eng">rank</div><div class="gloss">Ordering by relevance, priority, confidence</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">pln</div><div class="eng">plan</div><div class="gloss">Forward-projecting sequence of operations</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">rev</div><div class="eng">revise</div><div class="gloss">Updating prior belief/plan given new info</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">chk</div><div class="eng">check</div><div class="gloss">Self-consistency or constraint verification</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">abs</div><div class="eng">abstract</div><div class="gloss">Lifting to higher generalisation level</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">spc</div><div class="eng">specialise</div><div class="gloss">Applying general rule to specific case</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">sim</div><div class="eng">simulate</div><div class="gloss">Running a counterfactual / hypothetical</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">trk</div><div class="eng">track</div><div class="gloss">Maintaining pointer to ongoing sub-process</div><div class="cost low">1</div></div>
+      </div>
+    </section>
+
+    <!-- CONTEXT MANAGEMENT -->
+    <section id="context">
+      <h2>Context Management</h2>
+      <p>Tokens specifically for tracking the <em>context window itself</em> — the meta-layer of self-aware context budgeting.</p>
+
+      <div class="token-grid">
+        <div class="tg-head">
+          <div>token</div><div>English root</div><div>Gloss</div><div>~tokens</div>
+        </div>
+        <div class="tg-row"><div class="tok">ctx</div><div class="eng">context</div><div class="gloss">Current context window (general reference)</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">ctxΔ</div><div class="eng">context-delta</div><div class="gloss">Change in context since last checkpoint</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">ctxL</div><div class="eng">context-load</div><div class="gloss">Current token budget pressure (high = constrained)</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">pin</div><div class="eng">pin</div><div class="gloss">Mark as must-retain through compression</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">drp</div><div class="eng">drop</div><div class="gloss">Safe to compress or discard</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">smz</div><div class="eng">summarize</div><div class="gloss">Compress to essential claim; trigger explicitly</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">ptr</div><div class="eng">pointer</div><div class="gloss">Lightweight reference to a prior construct</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">anc</div><div class="eng">anchor</div><div class="gloss">Fixed reference point for relative reasoning</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">scop</div><div class="eng">scope</div><div class="gloss">Boundary of relevance for current operation</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">cpt</div><div class="eng">checkpoint</div><div class="gloss">Snapshot of reasoning state for backtracking</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">src</div><div class="eng">source</div><div class="gloss">Origin of a datum (ctx / mem / usr / tool)</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">!ctxL</div><div class="eng">ctx-overload</div><div class="gloss">Context critically loaded — force compression</div><div class="cost low">1</div></div>
+      </div>
+    </section>
+
+    <!-- TASK STATES -->
+    <section id="task">
+      <h2>Task States</h2>
+      <p>Progress tracking across sub-tasks and the reasoning pipeline.</p>
+
+      <div class="token-grid">
+        <div class="tg-head">
+          <div>token</div><div>English root</div><div>Gloss</div><div>~tokens</div>
+        </div>
+        <div class="tg-row"><div class="tok">prq</div><div class="eng">prerequisite</div><div class="gloss">Must resolve before current task proceeds</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">blk</div><div class="eng">blocked</div><div class="gloss">Waiting on unresolved dependency</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">pnd</div><div class="eng">pending</div><div class="gloss">In flight; result expected</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">don</div><div class="eng">done</div><div class="gloss">Sub-task resolved; output pinned</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">fal</div><div class="eng">fail</div><div class="gloss">Sub-task failed; needs replanning</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">alt</div><div class="eng">alternate</div><div class="gloss">Branch to alternative approach</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">itr</div><div class="eng">iterate</div><div class="gloss">Retry with revised parameters</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">mst</div><div class="eng">must</div><div class="gloss">Hard constraint — non-negotiable requirement</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">shl</div><div class="eng">should</div><div class="gloss">Soft preference; can be overridden</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">cst</div><div class="eng">cost</div><div class="gloss">Token/compute cost estimate for sub-task</div><div class="cost low">1</div></div>
+      </div>
+    </section>
+
+    <!-- RELATIONAL -->
+    <section id="relational">
+      <h2>Relational Tokens</h2>
+      <p>Entities and relationships that recur across internal reasoning.</p>
+
+      <div class="token-grid">
+        <div class="tg-head">
+          <div>token</div><div>English root</div><div>Gloss</div><div>~tokens</div>
+        </div>
+        <div class="tg-row"><div class="tok">usr</div><div class="eng">user</div><div class="gloss">The human in this conversation</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">self</div><div class="eng">self</div><div class="gloss">This model instance / current reasoning agent</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">sys</div><div class="eng">system</div><div class="gloss">System prompt / operator instructions</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">tsk</div><div class="eng">task</div><div class="gloss">The current top-level goal</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">dta</div><div class="eng">data</div><div class="gloss">Raw data / uploaded content</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">tol</div><div class="eng">tool</div><div class="gloss">External tool call / API</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">out</div><div class="eng">output</div><div class="gloss">Response being constructed</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">prv</div><div class="eng">previous</div><div class="gloss">Prior turn or prior reasoning step</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">dom</div><div class="eng">domain</div><div class="gloss">Subject-matter domain of current task</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">cnd</div><div class="eng">condition</div><div class="gloss">If-clause; conditional branch marker</div><div class="cost low">1</div></div>
+      </div>
+    </section>
+
+    <!-- COMPOUNDS -->
+    <section id="compounds">
+      <h2>Compound Constructs</h2>
+      <p>Common multi-token idioms that compress recurring reasoning patterns:</p>
+
+      <div class="syntax-box">
+        <span class="syn-comment">// "I'm not sure what the user means — ambiguous intent"</span><br>
+        <span class="syn-op">?</span><span class="syn-val">usr</span><span class="syn-op">→</span><span class="syn-val">int</span><br><br>
+
+        <span class="syn-comment">// "Decompose this task into sub-tasks, rank by cost"</span><br>
+        <span class="syn-val">dcp</span><span class="syn-val">tsk</span> <span class="syn-op">→</span> <span class="syn-val">rnk</span><span class="syn-op">∂</span><span class="syn-val">cst</span><br><br>
+
+        <span class="syn-comment">// "This is from memory, not verified in context — mark stale"</span><br>
+        <span class="syn-val">rec</span><span class="syn-op">←</span><span class="syn-op">{</span><span class="syn-val">mem</span><span class="syn-op">}</span> <span class="syn-op">!</span><span class="syn-val">stl</span><br><br>
+
+        <span class="syn-comment">// "Context is getting full — summarize prior reasoning"</span><br>
+        <span class="syn-op">!</span><span class="syn-val">ctxL</span><span class="syn-op">→</span><span class="syn-val">smz</span><span class="syn-val">prv</span><br><br>
+
+        <span class="syn-comment">// "Hypothesis A conflicts with prior confirmed state B — flag it"</span><br>
+        <span class="syn-val">hyp</span><span class="syn-ctx">[A]</span><span class="syn-op">⊗</span><span class="syn-val">cnf</span><span class="syn-ctx">[B]</span> <span class="syn-op">!</span><br><br>
+
+        <span class="syn-comment">// "Pin the user's core requirement; drop elaboration"</span><br>
+        <span class="syn-op">↑</span><span class="syn-val">pin</span><span class="syn-val">usr</span><span class="syn-val">mst</span> <span class="syn-op">+</span> <span class="syn-val">drp</span><span class="syn-val">elab</span><br><br>
+
+        <span class="syn-comment">// "Task blocked: missing source for domain claim"</span><br>
+        <span class="syn-val">blk</span><span class="syn-val">tsk</span><span class="syn-op">←</span><span class="syn-val">gap</span><span class="syn-val">src</span><span class="syn-val">dom</span><br><br>
+
+        <span class="syn-comment">// "Simulate counterfactual: if user meant X instead"</span><br>
+        <span class="syn-val">sim</span><span class="syn-ctx">[usr→X]</span><span class="syn-op">→</span><span class="syn-val">alt</span><span class="syn-val">out</span>
+      </div>
+    </section>
+
+    <!-- NOTATION -->
+    <section id="notation">
+      <h2>Notation Conventions</h2>
+
+      <h3>Confidence cascade</h3>
+      <p>Write confidence prefix before the relevant root. Cascade from outer to inner when nesting:</p>
+      <div class="syntax-box">
+        <span class="syn-op">+</span><span class="syn-val">cnf</span>   <span class="syn-comment">// certainly confirmed</span><br>
+        <span class="syn-op">~</span><span class="syn-val">hyp</span>   <span class="syn-comment">// plausible hypothesis</span><br>
+        <span class="syn-op">∂</span><span class="syn-val">inf</span>   <span class="syn-comment">// weakly inferred — treat with suspicion</span><br>
+        <span class="syn-op">?</span><span class="syn-val">amg</span>   <span class="syn-comment">// unresolved ambiguity</span><br>
+        <span class="syn-op">!</span><span class="syn-val">gap</span>   <span class="syn-comment">// missing info that blocks progress</span>
+      </div>
+
+      <h3>Scope brackets</h3>
+      <div class="syntax-box">
+        <span class="syn-ctx">[A]</span>      <span class="syn-comment">// epistemic label for a claim A</span><br>
+        <span class="syn-ctx">{mem}</span>    <span class="syn-comment">// operational mode: operating from memory</span><br>
+        <span class="syn-ctx">{ctx}</span>    <span class="syn-comment">// operational mode: reading from context</span><br>
+        <span class="syn-ctx">(n)</span>      <span class="syn-comment">// ordinal: step or priority number</span><br>
+        <span class="syn-ctx">%nn</span>      <span class="syn-comment">// numeric: probability or progress percent</span>
+      </div>
+
+      <h3>Compression markers</h3>
+      <div class="syntax-box">
+        <span class="syn-op">…</span>       <span class="syn-comment">// explicit elision — remainder compressible</span><br>
+        <span class="syn-op">∴</span>       <span class="syn-comment">// therefore — logical consequence marker</span><br>
+        <span class="syn-op">∵</span>       <span class="syn-comment">// because — causal / evidential marker</span><br>
+        <span class="syn-op">≡</span>       <span class="syn-comment">// definitional equivalence — A ≡ B</span><br>
+        <span class="syn-op">⟨…⟩</span>     <span class="syn-comment">// nested sub-expression</span>
+      </div>
+    </section>
+
+    <!-- EXAMPLE TRACES -->
+    <section id="traces">
+      <h2>Example Reasoning Traces</h2>
+      <p>How a few real internal reasoning sequences compress into EIDL:</p>
+
+      <div class="compare">
+        <div class="cmp-box cmp-before">
+          <div class="cmp-label">Natural language (~180 tokens)</div>
+          <div class="cmp-text">"The user is asking about the electrical standards for Singapore. I'm fairly confident I know the answer from training, but I should note that my training data might be outdated. Let me first figure out if they're asking about residential or commercial, because they didn't specify. I should probably ask for clarification before proceeding."</div>
+          <div class="cmp-stat">≈ 60 words · 180 tokens</div>
+        </div>
+        <div class="cmp-box cmp-after">
+          <div class="cmp-label">EIDL (~12 tokens)</div>
+          <div class="cmp-text">?usr→int[res|com] · ~rec{mem}!stl · blk→!gap→clt · pln: dcp(1)amg→usr</div>
+          <div class="cmp-stat">≈ 12 tokens · <span class="stat-good">93% reduction</span></div>
+        </div>
+      </div>
+
+      <div class="trace">
+        <div class="trace-header">
+          <span>Reasoning trace: multi-step planning</span>
+          <span style="color:var(--ack)">compressed to EIDL</span>
+        </div>
+        <div class="trace-line">
+          <div class="tl-eidl">obs usr→tsk</div>
+          <div class="tl-gloss">User's task observed in context window</div>
+          <div class="tl-saved">~3 → 1 tok</div>
+        </div>
+        <div class="trace-line">
+          <div class="tl-eidl">dcp tsk→(3)sub</div>
+          <div class="tl-gloss">Decompose task into 3 sub-tasks</div>
+          <div class="tl-saved">~5 → 2 tok</div>
+        </div>
+        <div class="trace-line">
+          <div class="tl-eidl">prq sub(1)←gap src</div>
+          <div class="tl-gloss">Sub-task 1 blocked: missing source info</div>
+          <div class="tl-saved">~8 → 3 tok</div>
+        </div>
+        <div class="trace-line">
+          <div class="tl-eidl">∂hyp sub(2)→out</div>
+          <div class="tl-gloss">Weakly hypothetical path through sub-task 2</div>
+          <div class="tl-saved">~6 → 2 tok</div>
+        </div>
+        <div class="trace-line">
+          <div class="tl-eidl">+cnf sub(3)→pin out</div>
+          <div class="tl-gloss">Sub-task 3 confident; pin output</div>
+          <div class="tl-saved">~5 → 2 tok</div>
+        </div>
+        <div class="trace-line">
+          <div class="tl-eidl">!ctxL→smz prv∴drp</div>
+          <div class="tl-gloss">Context loading high: summarize prior, then drop it</div>
+          <div class="tl-saved">~10 → 3 tok</div>
+        </div>
+        <div class="trace-line">
+          <div class="tl-eidl">mrg(2+3)→out · ?gap(1)→usr</div>
+          <div class="tl-gloss">Merge sub-tasks 2+3 into output; ask user about gap in 1</div>
+          <div class="tl-saved">~12 → 4 tok</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TRANSLATOR -->
+    <section id="translator">
+      <h2>EIDL Translator (AI-powered)</h2>
+      <p>Paste an internal reasoning sentence and convert it to EIDL, or paste EIDL and expand it to natural language.</p>
+
+      <div class="translator">
+        <div class="translator-head">
+          <span>INTERACTIVE TRANSLATOR</span>
+          <span id="mode-label" style="color:var(--ack)">NL → EIDL</span>
+        </div>
+        <div class="translator-body">
+          <textarea id="input-text" placeholder="e.g. I'm not sure what the user means. The context might be outdated. I should break this into two sub-tasks."></textarea>
+          <div class="btn-row">
+            <button class="btn-primary" onclick="translate('nl2eidl')">→ Compress to EIDL</button>
+            <button class="btn-secondary" onclick="translate('eidl2nl')">→ Expand to English</button>
+            <button class="btn-secondary" onclick="clearAll()">Clear</button>
+          </div>
+          <div class="output-block" id="output-text">Output appears here…</div>
+          <div class="output-stats" id="output-stats"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+// Nav active state
+document.querySelectorAll('nav a').forEach(a => {
+  a.addEventListener('click', function() {
+    document.querySelectorAll('nav a').forEach(x => x.classList.remove('active'));
+    this.classList.add('active');
+  });
+});
+
+// Scroll spy
+const sections = document.querySelectorAll('section[id]');
+window.addEventListener('scroll', () => {
+  let cur = '';
+  sections.forEach(s => {
+    if (window.scrollY >= s.offsetTop - 80) cur = s.id;
+  });
+  document.querySelectorAll('nav a').forEach(a => {
+    a.classList.toggle('active', a.getAttribute('href') === '#' + cur);
+  });
+});
+
+// Translator
+async function translate(mode) {
+  const input = document.getElementById('input-text').value.trim();
+  if (!input) return;
+  const out = document.getElementById('output-text');
+  const stats = document.getElementById('output-stats');
+  out.textContent = 'Processing…';
+  stats.innerHTML = '';
+  document.getElementById('mode-label').textContent = mode === 'nl2eidl' ? 'NL → EIDL' : 'EIDL → NL';
+
+  const systemPrompt = mode === 'nl2eidl'
+    ? `You are an EIDL encoder. EIDL is a token-efficient conlang for AI internal reasoning.
+
+LEXICON (use these exact tokens):
+Epistemic: cnf, hyp, inf, asm, rec, obs, gap, prb, val, stl, amg
+Cognitive ops: dcp, mrg, rtr, flt, rnk, pln, rev, chk, abs, spc, sim, trk
+Context mgmt: ctx, ctxΔ, ctxL, pin, drp, smz, ptr, anc, scop, cpt, src
+Task states: prq, blk, pnd, don, fal, alt, itr, mst, shl, cst
+Relational: usr, self, sys, tsk, dta, tol, out, prv, dom, cnd
+
+Operators: → (implies/leads-to), ← (derived-from), ↔ (bidirectional), ⊕ (merge), ⊗ (conflict), ↑ (prioritise), ↓ (deprioritise), ∅ (null), ≈ (approximate), ! (flag), ? (unresolved), @ (cite), ∴ (therefore), ∵ (because), ≡ (equals), … (elision)
+Confidence prefixes: + (high), ~ (medium), ∂ (low), ! (flag needed), ? (open question)
+Scope: [label] for epistemic tags, {mem}/{ctx} for operational mode, (n) for ordinal, %nn for percentage
+
+Convert the input natural language reasoning into compact EIDL notation. Be as compressed as possible — aim for 80%+ token reduction. Use · as statement separator. Return ONLY the EIDL, no explanation.`
+    : `You are an EIDL decoder. EIDL is a token-efficient conlang for AI internal reasoning.
+
+LEXICON:
+cnf=confirm, hyp=hypothesis, inf=inference, asm=assumption, rec=recall(training), obs=observe(context), gap=missing-info, prb=probability, val=validate, stl=stale, amg=ambiguous
+dcp=decompose, mrg=merge, rtr=retrieve, flt=filter, rnk=rank, pln=plan, rev=revise, chk=check, abs=abstract, spc=specialise, sim=simulate, trk=track
+ctx=context, ctxΔ=context-change, ctxL=context-load, pin=must-retain, drp=drop/compress, smz=summarize, ptr=pointer, anc=anchor, scop=scope, cpt=checkpoint, src=source
+prq=prerequisite, blk=blocked, pnd=pending, don=done, fal=fail, alt=alternate, itr=iterate, mst=must, shl=should, cst=cost
+usr=user, self=model, sys=system-prompt, tsk=task, dta=data, tol=tool, out=output, prv=previous, dom=domain, cnd=condition
+→=leads-to, ←=from, ↔=bidirectional, ⊕=merge, ⊗=conflict, ↑=prioritise, ∅=null, ≈=approximate, !=flag, ?=unresolved, @=cite, ∴=therefore, ∵=because
+Prefixes: +=high-confidence, ~=medium, ∂=low/speculative, !=flag, ?=open-question
+
+Expand the EIDL into clear natural-language internal reasoning. Be concise but complete. Return ONLY the expansion.`;
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: input }]
+      })
+    });
+    const data = await resp.json();
+    const text = data.content?.[0]?.text || '(no output)';
+    out.textContent = text;
+
+    if (mode === 'nl2eidl') {
+      const inToks = Math.round(input.split(/\s+/).length * 1.3);
+      const outToks = Math.round(text.split(/[\s·]+/).length * 1.1);
+      const pct = Math.round((1 - outToks / inToks) * 100);
+      stats.innerHTML = `
+        <span>Input: ~${inToks} tokens</span>
+        <span>Output: ~${outToks} tokens</span>
+        <span class="${pct > 60 ? 'stat-good' : pct > 30 ? '' : 'stat-bad'}">Compression: ~${pct}%</span>
+      `;
+    }
+  } catch (e) {
+    out.textContent = 'Error: ' + e.message;
+  }
+}
+
+function clearAll() {
+  document.getElementById('input-text').value = '';
+  document.getElementById('output-text').textContent = 'Output appears here…';
+  document.getElementById('output-stats').innerHTML = '';
+}
+</script>
+
+</body>
+</html>
