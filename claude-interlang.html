@@ -470,7 +470,7 @@
       <p>Natural language internal monologue is wasteful. "I am not fully confident in this because I haven't verified it and the user might mean something different" is ~80 chars. In EIDL: <span class="mono" style="color:var(--pulse)">?!∂usr→</span> (~8 chars, 10× compression). The loss is readability; the gain is context budget for actual reasoning.</p>
 
       <div class="rationale">
-        <strong>Design axioms:</strong> (1) Precision over prose — every glyph must encode something a plain word would diffuse. (2) Composable, not inflected — affixes attach to roots; no irregular forms. (3) ASCII-compatible core — all base tokens use printable ASCII; superscripts/subscripts are optional enrichment. (4) One-pass parseable — no ambiguous tokenization; operator before operand throughout.
+        <strong>Design axioms:</strong> (1) Precision over prose — every glyph must encode something a plain word would diffuse. (2) Composable, not inflected — affixes attach to roots; no irregular forms. (3) ASCII-compatible core — all base tokens use printable ASCII; superscripts/subscripts are optional enrichment. (4) One-pass parseable — no ambiguous tokenization; operator between operands, binds rightward, read left-to-right.
       </div>
 
       <h3>What EIDL is not</h3>
@@ -524,6 +524,8 @@
         <span class="syn-ctx">∗</span>   = generalises / applies broadly
       </div>
 
+      <p><strong>Disambiguation:</strong> <span class="mono">!</span> and <span class="mono">?</span> are also Tier‑1 operators (flag/alert, unresolved query) — same glyph, two roles. Rule: glued directly onto a root with no space (<span class="mono">!ctxL</span>, <span class="mono">?amg</span>) is the confidence prefix; standing alone as its own whitespace-separated token is the operator.</p>
+
       <h3>Compound formation</h3>
       <p>Compounds chain roots with operators. Reading order: left-to-right, operator binds rightward.</p>
 
@@ -551,7 +553,6 @@
         <div class="tg-row"><div class="tok">rec</div><div class="eng">recall</div><div class="gloss">From training memory (not context)</div><div class="cost low">1</div></div>
         <div class="tg-row"><div class="tok">obs</div><div class="eng">observe</div><div class="gloss">Directly present in current context window</div><div class="cost low">1</div></div>
         <div class="tg-row"><div class="tok">gap</div><div class="eng">gap</div><div class="gloss">Missing information needed for resolution</div><div class="cost low">1</div></div>
-        <div class="tg-row"><div class="tok">cnf⊗</div><div class="eng">contradiction</div><div class="gloss">Two confirmed facts that conflict</div><div class="cost low">1</div></div>
         <div class="tg-row"><div class="tok">prb</div><div class="eng">probability</div><div class="gloss">Probabilistic estimate; use with % or h/m/l</div><div class="cost low">1</div></div>
         <div class="tg-row"><div class="tok">val</div><div class="eng">validate</div><div class="gloss">Needs or has passed a consistency check</div><div class="cost low">1</div></div>
         <div class="tg-row"><div class="tok">stl</div><div class="eng">stale</div><div class="gloss">May be outdated relative to current date</div><div class="cost low">1</div></div>
@@ -603,7 +604,6 @@
         <div class="tg-row"><div class="tok">scop</div><div class="eng">scope</div><div class="gloss">Boundary of relevance for current operation</div><div class="cost low">1</div></div>
         <div class="tg-row"><div class="tok">cpt</div><div class="eng">checkpoint</div><div class="gloss">Snapshot of reasoning state for backtracking</div><div class="cost low">1</div></div>
         <div class="tg-row"><div class="tok">src</div><div class="eng">source</div><div class="gloss">Origin of a datum (ctx / mem / usr / tool)</div><div class="cost low">1</div></div>
-        <div class="tg-row"><div class="tok">!ctxL</div><div class="eng">ctx-overload</div><div class="gloss">Context critically loaded — force compression</div><div class="cost low">1</div></div>
       </div>
     </section>
 
@@ -648,6 +648,7 @@
         <div class="tg-row"><div class="tok">prv</div><div class="eng">previous</div><div class="gloss">Prior turn or prior reasoning step</div><div class="cost low">1</div></div>
         <div class="tg-row"><div class="tok">dom</div><div class="eng">domain</div><div class="gloss">Subject-matter domain of current task</div><div class="cost low">1</div></div>
         <div class="tg-row"><div class="tok">cnd</div><div class="eng">condition</div><div class="gloss">If-clause; conditional branch marker</div><div class="cost low">1</div></div>
+        <div class="tg-row"><div class="tok">int</div><div class="eng">intent</div><div class="gloss">What the user/task is actually trying to achieve</div><div class="cost low">1</div></div>
       </div>
     </section>
 
@@ -679,7 +680,13 @@
         <span class="syn-val">blk</span><span class="syn-val">tsk</span><span class="syn-op">←</span><span class="syn-val">gap</span><span class="syn-val">src</span><span class="syn-val">dom</span><br><br>
 
         <span class="syn-comment">// "Simulate counterfactual: if user meant X instead"</span><br>
-        <span class="syn-val">sim</span><span class="syn-ctx">[usr→X]</span><span class="syn-op">→</span><span class="syn-val">alt</span><span class="syn-val">out</span>
+        <span class="syn-val">sim</span><span class="syn-ctx">[usr→X]</span><span class="syn-op">→</span><span class="syn-val">alt</span><span class="syn-val">out</span><br><br>
+
+        <span class="syn-comment">// "Context critically loaded — force compression" (bare idiom form)</span><br>
+        <span class="syn-op">!</span><span class="syn-val">ctxL</span><br><br>
+
+        <span class="syn-comment">// "Two confirmed facts conflict" — cnf⊗ needs a right-hand operand, e.g. cnf[A]⊗cnf[B]</span><br>
+        <span class="syn-val">cnf</span><span class="syn-op">⊗</span><span class="syn-val">cnf</span>
       </div>
     </section>
 
@@ -842,7 +849,7 @@ Epistemic: cnf, hyp, inf, asm, rec, obs, gap, prb, val, stl, amg
 Cognitive ops: dcp, mrg, rtr, flt, rnk, pln, rev, chk, abs, spc, sim, trk
 Context mgmt: ctx, ctxΔ, ctxL, pin, drp, smz, ptr, anc, scop, cpt, src
 Task states: prq, blk, pnd, don, fal, alt, itr, mst, shl, cst
-Relational: usr, self, sys, tsk, dta, tol, out, prv, dom, cnd
+Relational: usr, self, sys, tsk, dta, tol, out, prv, dom, cnd, int
 
 Operators: → (implies/leads-to), ← (derived-from), ↔ (bidirectional), ⊕ (merge), ⊗ (conflict), ↑ (prioritise), ↓ (deprioritise), ∅ (null), ≈ (approximate), ! (flag), ? (unresolved), @ (cite), ∴ (therefore), ∵ (because), ≡ (equals), … (elision)
 Confidence prefixes: + (high), ~ (medium), ∂ (low), ! (flag needed), ? (open question)
@@ -856,7 +863,7 @@ cnf=confirm, hyp=hypothesis, inf=inference, asm=assumption, rec=recall(training)
 dcp=decompose, mrg=merge, rtr=retrieve, flt=filter, rnk=rank, pln=plan, rev=revise, chk=check, abs=abstract, spc=specialise, sim=simulate, trk=track
 ctx=context, ctxΔ=context-change, ctxL=context-load, pin=must-retain, drp=drop/compress, smz=summarize, ptr=pointer, anc=anchor, scop=scope, cpt=checkpoint, src=source
 prq=prerequisite, blk=blocked, pnd=pending, don=done, fal=fail, alt=alternate, itr=iterate, mst=must, shl=should, cst=cost
-usr=user, self=model, sys=system-prompt, tsk=task, dta=data, tol=tool, out=output, prv=previous, dom=domain, cnd=condition
+usr=user, self=model, sys=system-prompt, tsk=task, dta=data, tol=tool, out=output, prv=previous, dom=domain, cnd=condition, int=intent
 →=leads-to, ←=from, ↔=bidirectional, ⊕=merge, ⊗=conflict, ↑=prioritise, ∅=null, ≈=approximate, !=flag, ?=unresolved, @=cite, ∴=therefore, ∵=because
 Prefixes: +=high-confidence, ~=medium, ∂=low/speculative, !=flag, ?=open-question
 
