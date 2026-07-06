@@ -82,6 +82,7 @@ See [INSTRUCTIONS.md](INSTRUCTIONS.md) for a paste-able version of this lexicon 
 | `prv` | previous |
 | `dom` | domain |
 | `cnd` | condition |
+| `int` | intent |
 
 ---
 
@@ -106,6 +107,7 @@ See [INSTRUCTIONS.md](INSTRUCTIONS.md) for a paste-able version of this lexicon 
 | `≡` | definitional equivalence |
 | `…` | elision (compressible) |
 | `·` | statement separator |
+| `∗` | generalises broadly |
 
 ---
 
@@ -122,6 +124,8 @@ Prepend to any root:
 | `?` | open question |
 
 Example: `+cnf`, `~hyp`, `∂inf`, `?amg`
+
+**Disambiguation**: `!` and `?` are also standalone Operators above (flag/alert, unresolved query) — the same glyph, two roles. The rule: glued directly onto a root with no space (`!ctxL`, `?amg`) is the confidence prefix; on its own as a whitespace-separated token is the operator.
 
 ---
 
@@ -154,5 +158,5 @@ Example: `+cnf`, `~hyp`, `∂inf`, `?amg`
 obs{ctx}: usr→req · dcp tsk→(n)sub · pln · chk prq · out→NL
 +cnf=certain  ~hyp=likely  ∂inf=speculative  ?amg=unclear
 → leads-to   ← from   ↔ both   ⊕ merge   ⊗ conflict   ∅ none
-· separator   ! alert   ? open   @ cite   ∴ therefore   ∵ because
+· separator   ! alert   ? open   @ cite   ∴ therefore   ∵ because   ∗ generalises
 ```

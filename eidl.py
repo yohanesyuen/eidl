@@ -93,13 +93,14 @@ ROOT_MEANINGS = {
     "dcp": "decompose", "mrg": "merge", "rtr": "retrieve", "flt": "filter",
     "rnk": "rank", "pln": "plan", "rev": "revise", "chk": "check", "abs": "abstract",
     "spc": "specialise", "sim": "simulate", "trk": "track",
-    "ctx": "context", "ctxΔ": "context change", "ctxl": "context load",
+    "ctx": "context", "ctxδ": "context change", "ctxl": "context load",
     "pin": "must retain", "drp": "drop/compress", "smz": "summarize",
     "ptr": "pointer", "anc": "anchor", "scop": "scope", "cpt": "checkpoint", "src": "source",
     "prq": "prerequisite", "blk": "blocked", "pnd": "pending", "don": "done",
     "fal": "failed", "alt": "alternate", "itr": "iterate", "mst": "must", "shl": "should", "cst": "cost",
     "usr": "the user", "self": "the model", "sys": "the system prompt", "tsk": "task",
     "dta": "data", "tol": "tool", "out": "output", "prv": "previous", "dom": "domain", "cnd": "condition",
+    "int": "intent",
 }
 
 OP_MEANINGS = {
@@ -107,9 +108,17 @@ OP_MEANINGS = {
     "⊗": "conflicts with", "↑": "prioritised", "↓": "deprioritised",
     "∅": "nothing / no evidence", "≈": "approximately", "!": "flagged:",
     "?": "open question:", "@": "citing", "∴": "therefore", "≡": "is equivalent to",
+    "∗": "generalises broadly",
 }
 
-CONF_MEANINGS = {"+": "high confidence", "~": "medium confidence", "∂": "low confidence"}
+# +/~/∂/!/? are confidence prefixes ONLY when glued directly to a following root
+# (no space) -- see _TOKEN_RE. As their own whitespace-separated token, ! and ?
+# are the standalone operators above instead (disambiguation rule, not a
+# separate meaning for the same glyph).
+CONF_MEANINGS = {
+    "+": "high confidence", "~": "medium confidence", "∂": "low confidence",
+    "!": "needs flag", "?": "open question",
+}
 
 # Longest phrase first so multi-word synonyms match before single words.
 SYNONYMS = sorted({
@@ -142,7 +151,7 @@ SYNONYMS = sorted({
     "the user": "usr", "user": "usr", "the model": "self",
     "system prompt": "sys", "task": "tsk", "data": "dta", "tool": "tol",
     "output": "out", "previous": "prv", "domain": "dom", "condition": "cnd",
-    "therefore": "∴", "because": "∵", "leads to": "→",
+    "therefore": "∴", "because": "∵", "leads to": "→", "intent": "int",
 }.items(), key=lambda kv: -len(kv[0]))
 
 
@@ -161,42 +170,61 @@ def local_nl2eidl(text: str) -> str:
     return " · ".join(out_clauses)
 
 
+# Tokenizer for EIDL→NL decoding. Operators are NOT required to be
+# whitespace-separated from roots (the spec's own canonical examples glue
+# them, e.g. `usr→int`), so this splits on operator glyphs directly rather
+# than relying on `.split()`. A leading +/~/∂/!/? is only a confidence
+# prefix when glued straight onto following letters (no space) -- matched
+# greedily first, before the standalone-operator alternative -- which is
+# the disambiguation rule for the dual-use `!`/`?` glyphs.
+_TOKEN_RE = re.compile(
+    r"\{[^}]*\}"                 # {mem} / {ctx}
+    r"|\[[^\]]*\]"                # [label]
+    r"|\(\d+\)"                   # (n) ordinal
+    r"|%\d+"                      # %nn probability/progress
+    r"|[+~∂!?][A-Za-zΑ-Ωα-ω]+"    # confidence-prefixed root (glued)
+    r"|[A-Za-zΑ-Ωα-ω]+"           # bare root/word
+    r"|[→←↔⊕⊗↑↓∅≈∗!?@∴∵≡…]"       # standalone operator (incl. bare ! or ?)
+)
+
+
 def local_eidl2nl(text: str) -> str:
     """Rule-based EIDL→NL: expand roots/operators/confidence prefixes via the lexicon."""
     clauses = [c.strip() for c in text.split("·") if c.strip()]
     sentences = []
     for clause in clauses:
-        tokens = clause.split()
+        tokens = _TOKEN_RE.findall(clause)
         words = []
         for tok in tokens:
             conf = ""
-            if tok and tok[0] in CONF_MEANINGS:
-                conf, tok = CONF_MEANINGS[tok[0]] + " ", tok[1:]
-            if tok in OP_MEANINGS:
-                words.append(OP_MEANINGS[tok])
-            elif tok.lower() in ROOT_MEANINGS:
-                words.append(conf + ROOT_MEANINGS[tok.lower()])
+            root = tok
+            if len(tok) > 1 and tok[0] in CONF_MEANINGS:
+                conf, root = CONF_MEANINGS[tok[0]] + " ", tok[1:]
+            if root in OP_MEANINGS:
+                words.append(OP_MEANINGS[root])
+            elif root.lower() in ROOT_MEANINGS:
+                words.append(conf + ROOT_MEANINGS[root.lower()])
             else:
-                words.append(conf + tok)
+                words.append(conf + root)
         sentences.append(" ".join(words))
     return ". ".join(sentences) + "." if sentences else ""
 
 # ── Heuristic: detect direction ───────────────────────────────────────────────
 
-EIDL_OPERATORS = set("→←↔⊕⊗↑↓∅≈!?@∴∵≡…·∂")
+EIDL_OPERATORS = set("→←↔⊕⊗↑↓∅≈∗!?@∴∵≡…·∂")
 EIDL_ROOTS = {
     "cnf","hyp","inf","asm","rec","obs","gap","prb","val","stl","amg",
     "dcp","mrg","rtr","flt","rnk","pln","rev","chk","abs","spc","sim","trk",
     "ctx","pin","drp","smz","ptr","anc","scop","cpt","src",
     "prq","blk","pnd","don","fal","alt","itr","mst","shl","cst",
-    "usr","self","sys","tsk","dta","tol","out","prv","dom","cnd",
-    "ctxL","ctxΔ","ctxl",
+    "usr","self","sys","tsk","dta","tol","out","prv","dom","cnd","int",
+    "ctxl","ctxδ",
 }
 
 def detect_direction(text: str) -> str:
     """Return 'eidl2nl' if text looks like EIDL, else 'nl2eidl'."""
     op_count = sum(1 for ch in text if ch in EIDL_OPERATORS)
-    words = re.findall(r"[a-zA-ZΔ]+", text.lower())
+    words = re.findall(r"[a-zA-Zδ]+", text.lower())
     root_count = sum(1 for w in words if w in EIDL_ROOTS)
     word_count = max(len(text.split()), 1)
     if op_count >= 2 or root_count >= 2 or (root_count >= 1 and word_count <= 8):
